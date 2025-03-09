@@ -82,7 +82,7 @@ void criarconfigpredefinida(){
             fprintf(cfg,"%% rho - densidade de ar ao nível do mar [kg/m3]\n1.225\n");
             fprintf(cfg,"%% CD0 - valor do coeficiente de drag para Cl = 0\n0.02\n");
             fprintf(cfg,"%% e - factor de eficiencia de Oswald\n0.9\n");
-            fprintf(cfg,"%% %s - angulo de ataque [rad] (cuidado com o valor desta variavel !!!)\n0.1",ALPHASIMBOLO);
+            fprintf(cfg,"%% %s - angulo de ataque [rad] (cuidado com o valor desta variavel !!!)\n0.1\n",ALPHASIMBOLO);
             fprintf(cfg,"%% V(0) -velocidade inicial [m/s]\n11.0\n");
             fprintf(cfg,"%% %s(0) [rad] - flight path angle inicial\n0.0\n",GAMMASIMBOLO);
             fprintf(cfg,"%% x(0) posicao horizontal inicial [m]\n0.0\n");
@@ -148,6 +148,7 @@ void print_vetor(float vetor[], unsigned int dim){
 //Realiza os calculos da opcao 1 e escreve os valores no ficheiro voo_sim.txt. Tem como argumentos o vetor com os dados do config_modelo.txt. O vetor em que os dados processados vao sendo alojados vai ser declarado dentro da propria funcao, nao vai ser muito util leva-lo para fora, ja que no fim so ficam guardados os valores do ultimo instante
 void opcaoum(float VETOR_INICIAL[]){ //COLOQUEI ASSIM O NOME DO VETOR PARA APROVEITAR AS DEFINICOES JA FEITAS ACIMA, VAO SER MUITO UTEIS
     int i;
+    float vtemp; //vou precisar de guardar um valor de V para uma das operações
     float VETOR_PROCESSAMENTO[NUMERODEVALORESPROCESSADOS];
     FILE * fresultados = fopen("voo_sim.txt","w"); //aqui julgamos nao haver preocupacao com o caso do ficheiro existir ou nao, ele vai criar sempre um novo ou "apagar" o ja existente e colocar novos dados. A unica situacao em que fazer um mecanismo assim seria justificavel ia ser no caso do utilizador estar a tentar correr o programa num diretorio em que o mesmo nao tem permissao para escrever
     AR = (B * B) / S;
@@ -171,8 +172,9 @@ void opcaoum(float VETOR_INICIAL[]){ //COLOQUEI ASSIM O NOME DO VETOR PARA APROV
         DRAG = CD * 0.5 * RHO * V * V * S;
         X = X + DT * V * cos(GAMMA);
         H = H + DT * V * sin(GAMMA);
+        vtemp = V;
         V = V + (DT / M) *  (-DRAG - M * G * sin(GAMMA));
-        GAMMA = GAMMA + (DT / (M * V)) * (LIFT - M * G * sin(GAMMA));
+        GAMMA = GAMMA + (DT / (M * vtemp)) * (LIFT - M * G * cos(GAMMA));
 
         fprintf(fresultados, "%g %g %g %g %g\n", T, V, GAMMA, X, H);
         T += DT;
