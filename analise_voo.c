@@ -3,12 +3,22 @@ Um cabeçalho bonito, pôr aqui os nossos nomes ou algo do género
 -------------------------------------------------------------------------*/
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 
-//CUIDADO AO MEXER NO NOME DE NENHUMA DESTAS DEFINIÇÕES POR FAVOR!!! PODE ESTRAGAR O CÓDIGO TODO!!!
-#define NUMERODEDADOSINICIAIS 14 //tamanho do vetor que guarda os dados do config_modelo.txt
+//CUIDADO AO MEXER NO NOME DESTAS DEFINIÇÕES POR FAVOR!!! PODE ESTRAGAR O CÓDIGO TODO!!!
+//DEFINICOES DE LETRAS GREGAS(VALOR UNICODE DELAS, MOSTROU OS CARACTERES EM WSL)
+//se não funcionar, basta alterar este define para algo como "alpha"
+#define ALPHASIMBOLO "\u03b1"
+#define GAMMASIMBOLO "\u03b3"
+
+//DEFINICOES DE CONSTANTES MATEMATICAS
+#define PI 3.14159
+
 //DEFINICOES DOS DADOS LIDOS DO FICHEIRO config_modelo.txt
 #define VETOR_INICIAL vetor_dados_iniciais
+#define NUMERODEDADOSINICIAIS 14 //tamanho do vetor que guarda os dados do config_modelo.txt
+
 #define TF VETOR_INICIAL[0]
 #define DT VETOR_INICIAL[1]
 #define S VETOR_INICIAL[2]
@@ -23,6 +33,22 @@ Um cabeçalho bonito, pôr aqui os nossos nomes ou algo do género
 #define GAMMA0 VETOR_INICIAL[11]
 #define X0 VETOR_INICIAL[12]
 #define H0 VETOR_INICIAL[13]
+
+//DEFINICOES DOS DADOS PROCESSADOS PARA FAZER A OPCAO 1
+#define VETOR_PROCESSAMENTO vetor_dados_opcao1
+#define NUMERODEVALORESPROCESSADOS 10
+
+#define AR VETOR_PROCESSAMENTO[0]
+#define CL VETOR_PROCESSAMENTO[1]
+#define CD VETOR_PROCESSAMENTO[2]
+#define LIFT VETOR_PROCESSAMENTO[3]
+#define DRAG VETOR_PROCESSAMENTO[4]
+#define V VETOR_PROCESSAMENTO[5]
+#define GAMMA VETOR_PROCESSAMENTO[6]
+#define X VETOR_PROCESSAMENTO[7]
+#define H VETOR_PROCESSAMENTO[8]
+#define T VETOR_PROCESSAMENTO[9]
+
 //ESTAS DEFINICOES SERAO USADAS PARA NOS REFERIRMOS A ESTES VALORES!
 
 //---------------Zona de cria��o de fun��es----------------------//
@@ -33,7 +59,7 @@ void opcoes(){
     printf("Lista de opcoes:\n");
     printf("0 - Terminar programa\n");
     printf("1 - Simular movimento da aeronave\n");
-    printf("2 - Determinar valores minimos e maximos absolutos de t, v(0), gama, x, h\n");
+    printf("2 - Determinar valores minimos e maximos absolutos de t, v(0), %s, x, h\n",GAMMASIMBOLO);
     printf("Selecionar opcao:");
 }
 
@@ -56,9 +82,9 @@ void criarconfigpredefinida(){
             fprintf(cfg,"%% rho - densidade de ar ao nível do mar [kg/m3]\n1.225\n");
             fprintf(cfg,"%% CD0 - valor do coeficiente de drag para Cl = 0\n0.02\n");
             fprintf(cfg,"%% e - factor de eficiencia de Oswald\n0.9\n");
-            fprintf(cfg,"%% alpha - angulo de ataque [rad] (cuidado com o valor desta variavel !!!)\n0.1");
+            fprintf(cfg,"%% %s - angulo de ataque [rad] (cuidado com o valor desta variavel !!!)\n0.1",ALPHASIMBOLO);
             fprintf(cfg,"%% V(0) -velocidade inicial [m/s]\n11.0\n");
-            fprintf(cfg,"%% gamma(0) [rad] - flight path angle inicial\n0.0\n");
+            fprintf(cfg,"%% %s(0) [rad] - flight path angle inicial\n0.0\n",GAMMASIMBOLO);
             fprintf(cfg,"%% x(0) posicao horizontal inicial [m]\n0.0\n");
             fprintf(cfg,"%% h(0) - altitude inicial [m]\n5.0");
         fclose(cfg);
@@ -78,7 +104,7 @@ printf("DADOS RECOLHIDOS:\n");
 for(i = 0;i<NUMERODEDADOSINICIAIS;i++){
     printf("%d->%g\n",i+1,dados[i]);
 }
-printf("\nLEGENDA:\n1-tf[s]\t2-dt[s]\t3-S[m2]\t4-b[m]\t5-m[kg]\t6-g[m/s2]\t7-rho[kg/m3]\t8-CD0\t9-e\t10-alpha0[radianos]\t11-v0[m/s]\t12-gamma0[radianos]\t13-x0[m]\t14-h0[m]\n");
+printf("\nLEGENDA:\n1-tf[s]\t2-dt[s]\t3-S[m2]\t4-b[m]\t5-m[kg]\t6-g[m/s2]\t7-rho[kg/m3]\t8-CD0\t9-e\t10-%s0[radianos]\t11-v0[m/s]\t12-%s0[radianos]\t13-x0[m]\t14-h0[m]\n",ALPHASIMBOLO,GAMMASIMBOLO);
 printf("\nFIM DOS DADOS RECOLHIDOS!\n");
 }
 
@@ -98,7 +124,8 @@ int lerconfig(float dados[]){
         linha[0] = '\0';
         pchar = fgets(linha,255,config);
         nconv = sscanf(linha,"%g", &aux);
-        if((linha[0]=='%')||(linha[0]==' ')||(nconv!=1)){
+        //condição inicial-> (linha[0]=='%')||(linha[0]==' ')||(nconv!=1)
+        if((linha[0]==' ')||(nconv!=1)){ //o (linha[0]==' ')||(nconv!=1) basta, mas tenho de fazer mais testes para confirmar
                 linha[0] = '\0';
             }
             if(nconv==1){
@@ -118,25 +145,61 @@ void print_vetor(float vetor[], unsigned int dim){
     }
 }
 
+//Realiza os calculos da opcao 1 e escreve os valores no ficheiro voo_sim.txt. Tem como argumentos o vetor com os dados do config_modelo.txt. O vetor em que os dados processados vao sendo alojados vai ser declarado dentro da propria funcao, nao vai ser muito util leva-lo para fora, ja que no fim so ficam guardados os valores do ultimo instante
+void opcaoum(float VETOR_INICIAL[]){ //COLOQUEI ASSIM O NOME DO VETOR PARA APROVEITAR AS DEFINICOES JA FEITAS ACIMA, VAO SER MUITO UTEIS
+    int i;
+    float VETOR_PROCESSAMENTO[NUMERODEVALORESPROCESSADOS];
+    FILE * fresultados = fopen("voo_sim.txt","w"); //aqui julgamos nao haver preocupacao com o caso do ficheiro existir ou nao, ele vai criar sempre um novo ou "apagar" o ja existente e colocar novos dados. A unica situacao em que fazer um mecanismo assim seria justificavel ia ser no caso do utilizador estar a tentar correr o programa num diretorio em que o mesmo nao tem permissao para escrever
+    AR = (B * B) / S;
+    CL = ALPHA0 * PI * AR / (1 + sqrt(1 + pow(AR / 2, 2)));
+    CD = CD0 + pow(CL, 2) / (PI * E * AR);
+    //PRIMEIRO TEMOS DE BUSCAR OS VALORES INICIAIS DA CONFIG E COLOCÁ-LOS NO VETOR DE PROCESSAMENTO!
+    V = V0;
+    GAMMA = GAMMA0;
+    X = X0;
+    H = H0;
+    T = 0;
+    //convem tambem escrever ja a primeira e a segunda linhas do voo_sim.txt
+    fprintf(fresultados, "(");
+    for(i = 0;i<= 8;i++)
+        fprintf(fresultados,"%g, ",VETOR_INICIAL[i]); //coloca os 9 primeiros valores do vetor com os dados da config pela ordem certa (a ordem das definicoes la acima nao foram aleatorias)
+    fprintf(fresultados, "%g)\n",ALPHA0);
+    fprintf(fresultados, "%g %g %g %g %g\n", T, V0, GAMMA0, X0, H0);
+    //e agora podemos comecar o grande loop que vai fazer os calculos todos
+    while((T<= TF)&&(H > 0)){
+        LIFT = CL * 0.5 * RHO * V * V * S;
+        DRAG = CD * 0.5 * RHO * V * V * S;
+        X = X + DT * V * cos(GAMMA);
+        H = H + DT * V * sin(GAMMA);
+        V = V + (DT / M) *  (-DRAG - M * G * sin(GAMMA));
+        GAMMA = GAMMA + (DT / (M * V)) * (LIFT - M * G * sin(GAMMA));
+
+        fprintf(fresultados, "%g %g %g %g %g\n", T, V, GAMMA, X, H);
+        T += DT;
+    }
+    fclose(fresultados);
+    printf("Simulacao realizada com sucesso! Os resultados foram guardados em voo_sim.txt!\n");
+}
 //---------------------Zona da funcao principal----------------------//
 int main(){
     /*DECLARAÇÃO DE VARIÁVEIS LOCAIS*/
     float VETOR_INICIAL[NUMERODEDADOSINICIAIS];
-    int op, aux;
+    int op, dadoslidos;
         do{
             opcoes();
             scanf("%d", &op);
             switch (op){
                 case 1:
                     printf("\nSimulando movimento da aeronave.\n.\n.\n.\n\n");
-                    aux = lerconfig(VETOR_INICIAL);
-                    if (aux!=NUMERODEDADOSINICIAIS){
-                        fprintf(stderr,"ERRO: O numero de dados recolhido de config_modelo.txt nao corresponde ao numero de dados esperado. Foram recolhidos %d dados, esperavam-se %d!\n",aux,NUMERODEDADOSINICIAIS);
+                    dadoslidos = lerconfig(VETOR_INICIAL);
+                    if (dadoslidos!=NUMERODEDADOSINICIAIS){
+                        fprintf(stderr,"ERRO: O numero de dados recolhido de config_modelo.txt nao corresponde ao numero de dados esperado. Foram recolhidos %d dados, esperavam-se %d!\n",dadoslidos,NUMERODEDADOSINICIAIS);
                         mostrardadosrecolhidos(VETOR_INICIAL);
                         break;
                   }
                   else{
                     mostrardadosrecolhidos(VETOR_INICIAL);
+                    opcaoum(VETOR_INICIAL);
                   }                                                                      //Não te preocupes com o número de linhas ainda, e prefiro não compactar muito o código, se for preciso transferimos as coisas para novas funções
                                                                                         //Side note: � poss�vel reduzir este c�digo para menos linhas
                     break;                                                               //onde cada "case" tem as suas instru��es todas na mesma linha

@@ -1,13 +1,13 @@
 % tf tempo final da simulação [s]
-6.0
+1000
 % Passo de integração dt [s]
-1e-5
+1e-2
 % S – área da asa [m2]
 2.0e-2
 % b comprimento da asa [m]
 14e-2
 % m – massa da aeronave [kg]
-5e-3
+50
 % Aceleração da gravidade [m/s2]
 9.801
 % rho – densidade de ar ao nível do mar [kg/m3]
@@ -19,7 +19,7 @@
 % alpha – ângulo de ataque [rad] (cuidado com o valor desta variável !!!)
 0.1
 % V(0) -velocidade inicial [m/s]
-11.0
+30.0
 % gamma(0) [rad] – flight path angle inicial
 0.0
 % x(0) posição horizontal inicial [m]
