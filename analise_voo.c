@@ -49,6 +49,32 @@ Um cabeçalho bonito, pôr aqui os nossos nomes ou algo do género
 #define H VETOR_PROCESSAMENTO[8]
 #define T VETOR_PROCESSAMENTO[9]
 
+//DEFINICOES PARA O VETOR DOS MAXIMOS E MINIMOS DA OPCAO 2
+#define VETORMINMAX vetor_opcao2
+#define NUMERODEDADOSVETORMINMAX 15
+
+#define TLIDO VETORMINMAX[0]
+#define VLIDO VETORMINMAX[1]
+#define GAMMALIDO VETORMINMAX[2]
+#define XLIDO VETORMINMAX[3]
+#define HLIDO VETORMINMAX[4]
+
+#define TMIN VETORMINMAX[5]
+#define TMAX VETORMINMAX[6]
+
+#define VMIN VETORMINMAX[7]
+#define VMAX VETORMINMAX[8]
+
+#define GAMMAMIN VETORMINMAX[9]
+#define GAMMAMAX VETORMINMAX[10]
+
+#define XMIN VETORMINMAX[11]
+#define XMAX VETORMINMAX[12]
+
+#define HMIN VETORMINMAX[13]
+#define HMAX VETORMINMAX[14]
+
+#define LIXOOPCAO2 &GAMMALIDO,&GAMMALIDO,&GAMMALIDO,&GAMMALIDO,&GAMMALIDO,&GAMMALIDO,&GAMMALIDO,&GAMMALIDO,&GAMMALIDO,&GAMMALIDO
 //ESTAS DEFINICOES SERAO USADAS PARA NOS REFERIRMOS A ESTES VALORES!
 
 //---------------Zona de cria��o de fun��es----------------------//
@@ -109,7 +135,7 @@ printf("\nFIM DOS DADOS RECOLHIDOS!\n");
 }
 
 //Ler dados do ficheiro config_modelo.txt e atribuir valores lidos ao vetor do parametro.
-//Dá return ao numero de dados extraídos/encontrados dentro do ficheiro
+//Dá return ao numero de dados extraídos/encontrados dentro do ficheiro. Se o ficheiro não existir, dá return a -1
 int lerconfig(float dados[]){
         FILE * config;
         int nconv, i = 0;
@@ -117,9 +143,11 @@ int lerconfig(float dados[]){
         char * pchar;
         float aux;
     config = fopen("config_modelo.txt","r");
-        if (config==NULL)
+        if (config==NULL){
             criarconfigpredefinida();
-
+            return -1;
+        }
+    
     do{     
         linha[0] = '\0';
         pchar = fgets(linha,255,config);
@@ -182,6 +210,52 @@ void opcaoum(float VETOR_INICIAL[]){ //COLOQUEI ASSIM O NOME DO VETOR PARA APROV
     fclose(fresultados);
     printf("Simulacao realizada com sucesso! Os resultados foram guardados em voo_sim.txt!\n");
 }
+
+//A cada valor lido, vai verificar se o mesmo é menor ou maior que os respetivos minimos e maximos ate agora conhecidos. Se tal for o caso, a variavel em que o valor minimo ou maximo sao guardados passa a guardar o valor lido
+//pede primeiro o valor que vai sendo lido, e depois os endereços das variaveis em que os valores minimos e maximos sao guardados, respetivamente
+void escolheminmax(float valorlido, float *valormin, float *valormax){
+    if(valorlido > *valormax)
+        *valormax = valorlido;
+    if(valorlido < *valormin)
+        *valormin = valorlido;
+}
+//Realiza a leitura do ficheiro e procura os valores maximos e minimos para a opcao 2
+//Dá return ao numero de entradas (linhas) com valores lidos! 
+//Dá return de -1 se nao conseguir abrir o ficheiro voo_sim.txt!
+//Dá return de -2 se conseguir abrir o ficheiro, mas houver algum impedimento no formato
+int opcaodois(){
+    int aux, entradaslidas = 0;
+    float VETORMINMAX[NUMERODEDADOSVETORMINMAX];
+    FILE * fresultados = fopen("voo_sim.txt","r");
+    if(fresultados == NULL)
+        return -1;
+    if(fscanf(fresultados, "(%g, %g, %g, %g, %g, %g, %g, %g, %g, %g)",LIXOOPCAO2)!=10)
+        return -2;
+    aux = fscanf(fresultados,"%g %g %g %g %g", &TLIDO, &VMAX, &GAMMAMAX, &XMAX, &HMAX);
+    if(aux != 5)
+        return -2;
+    VMIN = VMAX;
+    GAMMAMIN = GAMMAMAX;
+    XMIN = XMAX;
+    HMIN = HMAX;
+    do{
+        aux = fscanf(fresultados,"%g %g %g %g %g", &TLIDO, &VLIDO, &GAMMALIDO, &XLIDO, &HLIDO);
+        escolheminmax(TLIDO, &TMIN, &TMAX);
+        escolheminmax(VLIDO, &VMIN, &VMAX);
+        escolheminmax(GAMMALIDO, &GAMMAMIN, &GAMMAMAX);
+        escolheminmax(XLIDO, &XMIN, &XMAX);
+        escolheminmax(HLIDO, &HMIN, &HMAX);
+        entradaslidas++;
+    }while(aux == 5);
+
+    printf("DADO\t\tMINIMO\t\tMAXIMO\n");
+    printf("Tempo\t\t%6.4g\t\t%6.4g\n",TMIN,TMAX);
+    printf("Velocidade\t%6.4g\t\t%6.4g\n",VMIN,VMAX);
+    printf("%s\t\t%6.4g\t\t%6.4g\n",GAMMASIMBOLO,VMIN,VMAX);
+    printf("Posicao x\t%6.4g\t\t%6.4g\n",XMIN,XMAX);
+    printf("Altura\t\t%6.4g\t\t%6.4g\n",HMIN,HMAX);
+    return entradaslidas;
+}
 //---------------------Zona da funcao principal----------------------//
 int main(){
     /*DECLARAÇÃO DE VARIÁVEIS LOCAIS*/
@@ -194,7 +268,7 @@ int main(){
                 case 1:
                     printf("\nSimulando movimento da aeronave.\n.\n.\n.\n\n");
                     dadoslidos = lerconfig(VETOR_INICIAL);
-                    if (dadoslidos!=NUMERODEDADOSINICIAIS){
+                    if ((dadoslidos!=NUMERODEDADOSINICIAIS) && (dadoslidos != -1)){
                         fprintf(stderr,"ERRO: O numero de dados recolhido de config_modelo.txt nao corresponde ao numero de dados esperado. Foram recolhidos %d dados, esperavam-se %d!\n",dadoslidos,NUMERODEDADOSINICIAIS);
                         mostrardadosrecolhidos(VETOR_INICIAL);
                         break;
@@ -206,7 +280,17 @@ int main(){
                                                                                         //Side note: � poss�vel reduzir este c�digo para menos linhas
                     break;                                                               //onde cada "case" tem as suas instru��es todas na mesma linha
                 case 2:                                                                  //contudo a legibilidade � capaz de diminuir.
-                    printf("\nDeterminando minimos e maximos absolutos\n.\n.\n.\n\n");   //ex.: case1:printf("---");break;
+                    printf("\nDeterminando minimos e maximos absolutos\n.\n.\n.\n\n");
+                    dadoslidos = opcaodois();
+                    if(dadoslidos == -1)
+                        fprintf(stderr,"ERRO: o ficheiro com os resultados de uma simulacao ainda nao existe! Por favor correr primeiro a opcao 1!\n");
+                    if(dadoslidos == -2)
+                        fprintf(stderr,"ERRO: o ficheiro foi aberto, mas nao se encontra no formato esperado, por favor corrigir qualquer alteracao manual pelo utilizador no ficheiro ou voltar a correr a simulacao!\n");
+                    else
+                        printf("Foram lidas %d linhas do ficheiro voo_sim.txt!\n",dadoslidos);
+  
+
+                                                                                       //ex.: case1:printf("---");break;
                     break;                                                               //outra side note: estou a pensar deixar o loop de opções aqui na função main, em cada opção colocamos as funções das operações que devem ser feitas!
                 case 0:
                     printf("\nPrograma terminado.\n\n");
