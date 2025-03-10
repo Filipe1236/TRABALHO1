@@ -2,7 +2,6 @@
 Um cabeçalho bonito, pôr aqui os nossos nomes ou algo do género
 -------------------------------------------------------------------------*/
 #include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
 
 
@@ -12,8 +11,9 @@ Um cabeçalho bonito, pôr aqui os nossos nomes ou algo do género
 #define ALPHASIMBOLO "\u03b1"
 #define GAMMASIMBOLO "\u03b3"
 
-//DEFINICOES DE CONSTANTES MATEMATICAS
+//DEFINICOES DE CONSTANTES MATEMATICAS OU ARBITRARIAS
 #define PI 3.14159
+#define MARGEMPARAVERIFICARPROGRESSO 537 //valor arbitrario: ISTO DIZ DE QUANTOS EM QUANTOS CICLOS AO LONGO DOS CALCULOS O PROGRAMA VAI FAZER UMA ESTIMATIVA DO PROGRESSO DOS CALCULOS. QUANTO MENOR O NUMERO, MAIS LENTO FICA O PROGRAMA!
 
 //DEFINICOES DOS DADOS LIDOS DO FICHEIRO config_modelo.txt
 #define VETOR_INICIAL vetor_dados_iniciais
@@ -74,11 +74,23 @@ Um cabeçalho bonito, pôr aqui os nossos nomes ou algo do género
 #define HMIN VETORMINMAX[13]
 #define HMAX VETORMINMAX[14]
 
-#define LIXOOPCAO2 &GAMMALIDO,&GAMMALIDO,&GAMMALIDO,&GAMMALIDO,&GAMMALIDO,&GAMMALIDO,&GAMMALIDO,&GAMMALIDO,&GAMMALIDO,&GAMMALIDO
+#define LIXOOPCAO2 &GAMMALIDO,&GAMMALIDO,&GAMMALIDO,&GAMMALIDO,&GAMMALIDO,&GAMMALIDO,&GAMMALIDO,&GAMMALIDO,&GAMMALIDO
 //ESTAS DEFINICOES SERAO USADAS PARA NOS REFERIRMOS A ESTES VALORES!
 
 //---------------Zona de cria��o de fun��es----------------------//
 
+//FUNCOES AUTOEXPLICATIVAS PARA ORDENS DO TERMINAL (a pesquisa demorou, mas serve para esconder e mostrar o cursor, util para as barras de progresso nao terem o cursor a ir de um lado para o outro constantemente)
+/*Estava a pensar fazer essa ordem por um define, mas como corresponde a uma acao achei melhor fazer funcoes de uma so linha
+#define ESCONDERCURSOR printf("\033[?25l");
+#define MOSTRARCURSOR printf("\033[?25h");
+*/
+void escondercursor(void){
+    printf("\033[?25l");
+}
+
+void mostrarcursor(void){
+    printf("\033[?25h");
+}
 
 //Imprime as opcoes que vao correr em ciclo
 void opcoes(){
@@ -173,10 +185,27 @@ void print_vetor(float vetor[], unsigned int dim){
     }
 }
 
+//funcao que vai mostrar no ecra algo parecido a uma barra de progresso
+//argumentos: a linha em que a leitura/escrita se encontra, aquilo que deve acompanhar o progresso dos calculos (aqui vai ser o tempo) e a variavel que deve marcar uma estimativa do fim(neste caso o tempo final da simulacao)
+//para funcionar bem, a barra de progresso deve ser definida e levada de fora desta funcao!
+// barra comeca com [----------] e vai substituindo uma linha por um # a cada 10%
+//output parecido com "[###-------]32.38% linha 13457"
+//LIMITACOES: funcao feita a pensar num ciclo com MUITOS calculos, mas sem poder ser chamada em todos os ciclos(muito lento). Coloquei passagem por endereco nos argumentos da funcao por achar que, intuitivamente, vai ser mais eficiente usar partes da memoria ja existentes do que estar a copiar esses dados para novas variaveis locais sempre que a funcao for chamada. É muito importante esconder o cursor com o escondercursor() antes de a utilizar!
+//A percentagem e a barra de progresso apenas faz uma estimativa em relacao ao tempo final da simulacao. Se a aeronave bater no chao antes, a simulacao pode chegar ao fim muito antes do tempo final!
+void progresso(int * indicadorlinhas, float *indicadorprogresso, float *fim, char barraprogresso[11]){
+    float percentagemprogresso;
+    percentagemprogresso = *indicadorprogresso / *fim * 100;
+    int dezemdez = (int) percentagemprogresso / 10 - 1;
+    barraprogresso[dezemdez] = '#';
+    printf("\r[%s] %.2f %% linha %d",barraprogresso,percentagemprogresso, *indicadorlinhas);
+    //fflush(stdout);
+}
 //Realiza os calculos da opcao 1 e escreve os valores no ficheiro voo_sim.txt. Tem como argumentos o vetor com os dados do config_modelo.txt. O vetor em que os dados processados vao sendo alojados vai ser declarado dentro da propria funcao, nao vai ser muito util leva-lo para fora, ja que no fim so ficam guardados os valores do ultimo instante
-void opcaoum(float VETOR_INICIAL[]){ //COLOQUEI ASSIM O NOME DO VETOR PARA APROVEITAR AS DEFINICOES JA FEITAS ACIMA, VAO SER MUITO UTEIS
-    int i;
-    float vtemp; //vou precisar de guardar um valor de V para uma das operações
+//Dá return ao numero de entradas (linhas) que o programa escreveu no ficheiro! 
+int opcaoum(float VETOR_INICIAL[]){ //COLOQUEI ASSIM O NOME DO VETOR PARA APROVEITAR AS DEFINICOES JA FEITAS ACIMA, VAO SER MUITO UTEIS
+    int i,auxprogresso = 1, linhasescritas = 1;
+    char barraprogresso[11] = "----------\0";
+    float vtemp; 
     float VETOR_PROCESSAMENTO[NUMERODEVALORESPROCESSADOS];
     FILE * fresultados = fopen("voo_sim.txt","w"); //aqui julgamos nao haver preocupacao com o caso do ficheiro existir ou nao, ele vai criar sempre um novo ou "apagar" o ja existente e colocar novos dados. A unica situacao em que fazer um mecanismo assim seria justificavel ia ser no caso do utilizador estar a tentar correr o programa num diretorio em que o mesmo nao tem permissao para escrever
     AR = (B * B) / S;
@@ -194,21 +223,32 @@ void opcaoum(float VETOR_INICIAL[]){ //COLOQUEI ASSIM O NOME DO VETOR PARA APROV
         fprintf(fresultados,"%g, ",VETOR_INICIAL[i]); //coloca os 9 primeiros valores do vetor com os dados da config pela ordem certa (a ordem das definicoes la acima nao foram aleatorias)
     fprintf(fresultados, "%g)\n",ALPHA0);
     fprintf(fresultados, "%g %g %g %g %g\n", T, V0, GAMMA0, X0, H0);
-    //e agora podemos comecar o grande loop que vai fazer os calculos todos
+    
+    //e agora podemos comecar o grande loop que vai fazer os calculos todos. A variavel linhas escritas vai permitir acompanhar o progresso do loop
+    printf("PROGRESSO:\n");
+    escondercursor();
     while((T<= TF)&&(H > 0)){
         LIFT = CL * 0.5 * RHO * V * V * S;
         DRAG = CD * 0.5 * RHO * V * V * S;
         X = X + DT * V * cos(GAMMA);
         H = H + DT * V * sin(GAMMA);
-        vtemp = V;
+        vtemp = V; //vou precisar de guardar o valor antigo de V para o gamma
         V = V + (DT / M) *  (-DRAG - M * G * sin(GAMMA));
         GAMMA = GAMMA + (DT / (M * vtemp)) * (LIFT - M * G * cos(GAMMA));
-
+        //Mecanismo para evitar que o calculo do progresso nao seja executado em todos os ciclos dos calculos, mas so de x em x ciclos, caso contrario seria o progresso a atrasar os calculos!
+        if(linhasescritas == auxprogresso * MARGEMPARAVERIFICARPROGRESSO){
+            progresso(&linhasescritas,&T,&TF,barraprogresso);
+            ++auxprogresso;
+        }
         fprintf(fresultados, "%g %g %g %g %g\n", T, V, GAMMA, X, H);
         T += DT;
+        ++linhasescritas;
     }
+    printf("\r\n");
+    mostrarcursor();
     fclose(fresultados);
     printf("Simulacao realizada com sucesso! Os resultados foram guardados em voo_sim.txt!\n");
+    return linhasescritas;
 }
 
 //A cada valor lido, vai verificar se o mesmo é menor ou maior que os respetivos minimos e maximos ate agora conhecidos. Se tal for o caso, a variavel em que o valor minimo ou maximo sao guardados passa a guardar o valor lido
@@ -219,17 +259,21 @@ void escolheminmax(float valorlido, float *valormin, float *valormax){
     if(valorlido < *valormin)
         *valormin = valorlido;
 }
+
 //Realiza a leitura do ficheiro e procura os valores maximos e minimos para a opcao 2
 //Dá return ao numero de entradas (linhas) com valores lidos! 
 //Dá return de -1 se nao conseguir abrir o ficheiro voo_sim.txt!
 //Dá return de -2 se conseguir abrir o ficheiro, mas houver algum impedimento no formato
 int opcaodois(){
-    int aux, entradaslidas = 0;
+    char barraprogresso[11] = "----------\0";
+    int aux, entradaslidas = 1;
+    int auxprogresso = 1;
     float VETORMINMAX[NUMERODEDADOSVETORMINMAX];
+    float tfinal;
     FILE * fresultados = fopen("voo_sim.txt","r");
     if(fresultados == NULL)
         return -1;
-    if(fscanf(fresultados, "(%g, %g, %g, %g, %g, %g, %g, %g, %g, %g)",LIXOOPCAO2)!=10)
+    if(fscanf(fresultados, "(%g, %g, %g, %g, %g, %g, %g, %g, %g, %g)", &tfinal, LIXOOPCAO2)!=10)
         return -2;
     aux = fscanf(fresultados,"%g %g %g %g %g", &TLIDO, &VMAX, &GAMMAMAX, &XMAX, &HMAX);
     if(aux != 5)
@@ -238,6 +282,8 @@ int opcaodois(){
     GAMMAMIN = GAMMAMAX;
     XMIN = XMAX;
     HMIN = HMAX;
+    printf("PROGRESSO:\n");
+    escondercursor();
     do{
         aux = fscanf(fresultados,"%g %g %g %g %g", &TLIDO, &VLIDO, &GAMMALIDO, &XLIDO, &HLIDO);
         escolheminmax(TLIDO, &TMIN, &TMAX);
@@ -245,8 +291,14 @@ int opcaodois(){
         escolheminmax(GAMMALIDO, &GAMMAMIN, &GAMMAMAX);
         escolheminmax(XLIDO, &XMIN, &XMAX);
         escolheminmax(HLIDO, &HMIN, &HMAX);
-        entradaslidas++;
+        if(entradaslidas == auxprogresso * MARGEMPARAVERIFICARPROGRESSO){
+            progresso(&entradaslidas, &TLIDO, &tfinal,barraprogresso);
+            ++auxprogresso;
+        }
+        ++entradaslidas;
     }while(aux == 5);
+    mostrarcursor();
+    printf("\r\n");
 
     printf("DADO\t\tMINIMO\t\tMAXIMO\n");
     printf("Tempo\t\t%6.4g\t\t%6.4g\n",TMIN,TMAX);
@@ -275,7 +327,8 @@ int main(){
                   }
                   else{
                     mostrardadosrecolhidos(VETOR_INICIAL);
-                    opcaoum(VETOR_INICIAL);
+                    dadoslidos = opcaoum(VETOR_INICIAL);
+                    printf("O programa escreveu %d linhas no ficheiro!\n",dadoslidos);
                   }                                                                      //Não te preocupes com o número de linhas ainda, e prefiro não compactar muito o código, se for preciso transferimos as coisas para novas funções
                                                                                         //Side note: � poss�vel reduzir este c�digo para menos linhas
                     break;                                                               //onde cada "case" tem as suas instru��es todas na mesma linha
