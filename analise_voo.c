@@ -390,38 +390,42 @@ int opcaodois(){
     return entradaslidas;
 }
 
-void implementa_opcao1(void) {
+//Todas as instruções associadas à primeira opção!
+void implementa_opcao1(void){
     float VETOR_INICIAL[NUMERODEDADOSINICIAIS];
-    int dadoslidos, errosnosvalores, ignoraravisos, aux;
-    char input[10];  // Buffer para leitura segura do input
-
+    int dadoslidos, errosnosvalores, ignoraravisos = 0;
     dadoslidos = lerconfig(VETOR_INICIAL);
-    errosnosvalores = intervalos_seguros(VETOR_INICIAL);
-
-    if ((dadoslidos != NUMERODEDADOSINICIAIS) && (dadoslidos != -1)) {
-        fprintf(stderr, "ERRO: O numero de dados recolhido de config_modelo.txt nao corresponde ao numero de dados esperado. Foram recolhidos %d dados, esperavam-se %d!\n", dadoslidos, NUMERODEDADOSINICIAIS);
-        mostrardadosrecolhidos(VETOR_INICIAL);
-    } 
-    else if (errosnosvalores != 0) {
-        fprintf(stderr, "\nERRO: %d valores fora da gama considerada! Por favor corrigir!\n\n", errosnosvalores);
-        printf("Se deseja manter estes parametros e seguir para a simulacao, escreva 1 e enter;\nQualquer outro valor leva de volta ao menu: ");
-
-        if (fgets(input, sizeof(input), stdin)) {  // Lê uma linha do stdin
-            if (sscanf(input, "%d", &ignoraravisos) == 1 && ignoraravisos == 1) {
-                printf("\nAvisos ignorados!\nSimulando movimento da aeronave...\n");
-                mostrardadosrecolhidos(VETOR_INICIAL);
-                dadoslidos = opcaoum(VETOR_INICIAL);
-                printf("O programa escreveu %d linhas no ficheiro!\n", dadoslidos);
-            }
-        }
-    } 
-    else {
-        mostrardadosrecolhidos(VETOR_INICIAL);
-        dadoslidos = opcaoum(VETOR_INICIAL);
-        printf("O programa escreveu %d linhas no ficheiro!\n", dadoslidos);
-    }
+                    errosnosvalores = intervalos_seguros(VETOR_INICIAL);
+                    if ((dadoslidos!=NUMERODEDADOSINICIAIS) && (dadoslidos != -1)){
+                        fprintf(stderr,"ERRO: O numero de dados recolhido de config_modelo.txt nao corresponde ao numero de dados esperado. Foram recolhidos %d dados, esperavam-se %d!\n",dadoslidos,NUMERODEDADOSINICIAIS);
+                        mostrardadosrecolhidos(VETOR_INICIAL);
+                  }
+                    else if(errosnosvalores!=0){
+                        fprintf(stderr,"\nERRO: %d valores fora da gama considerada!Por favor corrigir!\n\n",errosnosvalores);
+                        printf("Se deseja manter estes parametros e seguir para a simulacao, escreva 1 e enter;\n Colocar 0 leva de volta ao menu:");
+                        //Com um scanf("%c", &char), em linux o terminal nem chegava a pedir input do utilizador e saltava logo para o menu
+                        //Colocar letras dá um erro que não conseguimos resolver, por isso espera-se sempre um input numerico
+                        scanf("%d",&ignoraravisos);
+                        if(ignoraravisos==1){
+                            printf("\nAvisos ignorados!\nSimulando movimento da aeronave...\n");
+                            mostrardadosrecolhidos(VETOR_INICIAL);
+                            dadoslidos = opcaoum(VETOR_INICIAL);
+                            printf("O programa escreveu %d linhas no ficheiro!\n",dadoslidos);
+                        }
+                        else{
+                            printf("A voltar ao menu!\n");
+                            }    
+                    }
+                    
+                    else{
+                        mostrardadosrecolhidos(VETOR_INICIAL);
+                        dadoslidos = opcaoum(VETOR_INICIAL);
+                        printf("O programa escreveu %d linhas no ficheiro!\n",dadoslidos);
+                  }                                                                        
 }
 
+//Realiza todas as instruções associadas à segunda opção!
+//Na primeira execução, ocorre um erro ao mostrar o máximo do tempo final. Basta correr outra vez e ele indica bem!
 void implementa_opcao2(){
     int dadoslidos;
     dadoslidos = opcaodois();
